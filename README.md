@@ -12,7 +12,7 @@ _fortcoming_
 
 ## Next Steps
 * ~~Add consumer code~~
-* Add producer code
+* ~~Add producer code~~
 * Add basic integration tests
 * Increase configurability
 * Allow for greater orthogonality

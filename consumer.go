@@ -26,7 +26,7 @@ type consumerMessageConfig struct {
 	ctx          context.Context
 }
 
-func New(ctx context.Context, cfg *kafka.ConfigMap, pollTimeout int) *ConfluentConsumer {
+func NewConsumer(ctx context.Context, cfg *kafka.ConfigMap, pollTimeout int) *ConfluentConsumer {
 	l := ConfluentConsumer{
 		Ctx:         ctx,
 		Config:      cfg,
