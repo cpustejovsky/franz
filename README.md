@@ -1,5 +1,4 @@
 # franz
-configurable Kafka producer and consumer wrappers
 ![franz](./franz.png)
 
 ## Background
@@ -12,8 +11,8 @@ This would also coincide with extensive
 _fortcoming_
 
 ## Next Steps
+* ~~Add consumer code~~
 * Add producer code
-* Add consumer code
 * Add basic integration tests
 * Increase configurability
 * Allow for greater orthogonality
