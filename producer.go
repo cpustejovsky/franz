@@ -7,25 +7,24 @@ import (
 )
 
 type ConfluentProducer struct {
-	producer    *kafka.Producer
+	cfg         *kafka.ConfigMap
 	deliverChan chan kafka.Event
 }
 
-func NewProducer(cfg *kafka.ConfigMap, deliverChan chan kafka.Event) (*ConfluentProducer, error) {
-	producer, err := kafka.NewProducer(cfg)
-	if err != nil {
-		log.Println("Error with new producer:\t", err)
-		return nil, err
-	}
+func NewProducer(cfg *kafka.ConfigMap, deliverChan chan kafka.Event) *ConfluentProducer {
 	cp := ConfluentProducer{
 		deliverChan: deliverChan,
-		producer:    producer,
+		cfg:         cfg,
 	}
-	return &cp, nil
+	return &cp
 }
 
 func (cp *ConfluentProducer) Produce(msg *kafka.Message) error {
-	err := cp.producer.Produce(msg,
+	producer, err := kafka.NewProducer(cp.cfg)
+	if err != nil {
+		return err
+	}
+	err = producer.Produce(msg,
 		cp.deliverChan,
 	)
 	if err != nil {
