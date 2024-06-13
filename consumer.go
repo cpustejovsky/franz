@@ -85,11 +85,12 @@ func consumeMessage(cfg consumerMessageConfig) {
 			for {
 				err = cfg.eventHandler(cfg.ctx, event)
 				if err != nil {
-					//TODO Determine error handling; potentially have different
+					//TODO fine-grain error handling; determine sentinel errors?
 					cfg.errChan <- err
 				} else {
 					go func() {
 						_, err := cfg.consumer.Commit()
+						//TODO should errors committing be bubbled up or merely logged?
 						if err != nil {
 							log.Println("Error committing offset", err)
 						}
@@ -100,7 +101,7 @@ func consumeMessage(cfg consumerMessageConfig) {
 		case kafka.PartitionEOF:
 			log.Println("Reached EOF:\t", ev)
 		case kafka.Error:
-			log.Println("ErrorL\t", event)
+			log.Println("ErrorL\t", ev)
 			cfg.errChan <- event
 		default:
 		}
