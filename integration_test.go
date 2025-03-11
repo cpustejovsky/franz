@@ -2,20 +2,17 @@ package franz_test
 
 import (
 	"context"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"github.com/cpustejovsky/franz"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"os/signal"
 	"syscall"
 	"testing"
+
+	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/cpustejovsky/franz"
 )
 
 var producer *franz.ConfluentProducer
 var consumer *franz.ConfluentConsumer
-var kafkaServers = os.Getenv("BOOSTRAP_SERVER")
-var saslUser = os.Getenv("SASL_USERNAME")
-var saslPW = os.Getenv("SASL_PASSWORD")
 
 type stubEventHandler struct {
 	count   int
@@ -29,6 +26,11 @@ func (s *stubEventHandler) Handle(ctx context.Context, message *kafka.Message) e
 }
 
 func TestIntegration(t *testing.T) {
+	kafkaServers, ok := os.LookupEnv("BOOTSTRAP_SERVER")
+	if !ok {
+		t.Fatal("expected env var")
+	}
+
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 	deliverEvents := make(chan kafka.Event)
@@ -37,17 +39,9 @@ func TestIntegration(t *testing.T) {
 
 	producerCfg := kafka.ConfigMap{
 		"metadata.broker.list": kafkaServers,
-		"sasl.username":        saslUser,
-		"sasl.password":        saslPW,
-		"security.protocol":    "SASL_SSL",
-		"sasl.mechanisms":      "PLAIN",
 	}
 	consumerCfg := kafka.ConfigMap{
 		"bootstrap.servers":  kafkaServers,
-		"sasl.username":      saslUser,
-		"sasl.password":      saslPW,
-		"security.protocol":  "SASL_SSL",
-		"sasl.mechanisms":    "PLAIN",
 		"group.id":           "integration_test",
 		"auto.offset.reset":  "earliest",
 		"enable.auto.commit": "false",
@@ -65,8 +59,9 @@ func TestIntegration(t *testing.T) {
 		Value: []byte(val),
 	}
 	err := producer.Produce(&msg)
-	assert.Nil(t, err)
-
+	if err != nil {
+		t.Fatalf("expected nil, got %v", err)
+	}
 	s := stubEventHandler{
 		count:   0,
 		message: "",
@@ -82,13 +77,18 @@ func TestIntegration(t *testing.T) {
 	go func() {
 		errChan <- consumer.Consume(ctx, topic, s.Handle)
 	}()
-
+	expectCount := 1
+	expectMessage := val
 	select {
 	case e := <-errChan:
 		t.Log(e)
 		t.Fail()
 	case <-doneChan:
-		assert.Equal(t, s.count, 1)
-		assert.Equal(t, s.message, val)
+		if expectCount != s.count {
+			t.Fatalf("expected %v, got %v", expectCount, s.count)
+		}
+		if expectMessage != s.message {
+			t.Fatalf("expected %v, got %v", expectMessage, s.message)
+		}
 	}
 }
