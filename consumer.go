@@ -3,8 +3,10 @@ package franz
 import (
 	"context"
 	"encoding/json"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"fmt"
 	"log"
+
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
 type Handler func(ctx context.Context, m *kafka.Message) error
@@ -41,7 +43,7 @@ func (cc *ConfluentConsumer) Consume(ctx context.Context, topic string, handler 
 	evChan := make(chan kafka.Event)
 	consumer, err := kafka.NewConsumer(cc.Config)
 	if err != nil {
-		return err
+		return fmt.Errorf("error creating new consumer %w", err)
 	}
 	defer consumer.Close()
 	msgCfg := consumerMessageConfig{

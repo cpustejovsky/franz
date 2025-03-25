@@ -2,13 +2,13 @@ package franz_test
 
 import (
 	"context"
-	"os"
-	"os/signal"
-	"syscall"
 	"testing"
+	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/cpustejovsky/franz"
+	"github.com/testcontainers/testcontainers-go"
+	tckafka "github.com/testcontainers/testcontainers-go/modules/kafka"
 )
 
 var producer *franz.ConfluentProducer
@@ -25,23 +25,53 @@ func (s *stubEventHandler) Handle(ctx context.Context, message *kafka.Message) e
 	return nil
 }
 
-func TestIntegration(t *testing.T) {
-	kafkaServers, ok := os.LookupEnv("BOOTSTRAP_SERVER")
-	if !ok {
-		t.Fatal("expected env var")
+func NewConfigMapWithOptions(opts ...func(kafka.ConfigMap) kafka.ConfigMap) kafka.ConfigMap {
+	m := make(kafka.ConfigMap)
+	for _, opt := range opts {
+		m = opt(m)
 	}
+	return m
+}
 
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+func TestIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration")
+	}
+	// ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+	kafkaContainer, err := tckafka.Run(ctx,
+		"confluentinc/confluent-local:7.5.0",
+		tckafka.WithClusterID("test-cluster"),
+	)
+	defer func() {
+		if err := testcontainers.TerminateContainer(kafkaContainer); err != nil {
+			t.Logf("failed to terminate container: %s", err)
+		}
+	}()
+	if err != nil {
+		t.Errorf("failed to start container: %s", err)
+		return
+	}
+	brokers, err := kafkaContainer.Brokers(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(brokers)
 	deliverEvents := make(chan kafka.Event)
 	errChan := make(chan error)
 	doneChan := make(chan struct{})
 
+	var brokerString, sep string
+	for _, server := range brokers {
+		brokerString = sep + server
+		sep = ", "
+	}
 	producerCfg := kafka.ConfigMap{
-		"metadata.broker.list": kafkaServers,
+		"bootstrap.servers": brokerString,
 	}
 	consumerCfg := kafka.ConfigMap{
-		"bootstrap.servers":  kafkaServers,
+		"bootstrap.servers":  brokerString,
 		"group.id":           "integration_test",
 		"auto.offset.reset":  "earliest",
 		"enable.auto.commit": "false",
@@ -58,7 +88,7 @@ func TestIntegration(t *testing.T) {
 		},
 		Value: []byte(val),
 	}
-	err := producer.Produce(&msg)
+	err = producer.Produce(&msg)
 	if err != nil {
 		t.Fatalf("expected nil, got %v", err)
 	}

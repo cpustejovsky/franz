@@ -2,8 +2,9 @@ package franz
 
 import (
 	"fmt"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"log"
+
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
 type ConfluentProducer struct {
@@ -22,7 +23,7 @@ func NewProducer(cfg *kafka.ConfigMap, deliverChan chan kafka.Event) *ConfluentP
 func (cp *ConfluentProducer) Produce(msg *kafka.Message) error {
 	producer, err := kafka.NewProducer(cp.cfg)
 	if err != nil {
-		return err
+		return fmt.Errorf("error for config %+v:\t%w", cp.cfg, err)
 	}
 	err = producer.Produce(msg,
 		cp.deliverChan,
