@@ -57,6 +57,7 @@ func (cc *ConfluentConsumer) Consume(ctx context.Context, topic string, handler 
 	if err != nil {
 		return err
 	}
+	// TODO: better alternative than run boolean
 	go func() {
 		defer close(evChan)
 		for run {
@@ -79,33 +80,29 @@ func consumeMessage(cfg consumerMessageConfig) {
 	for ev := range cfg.evChan {
 		switch event := ev.(type) {
 		case *kafka.Message:
-			msgValues := make(map[string]interface{})
+			msgValues := make(map[string]any)
 			err := json.Unmarshal(event.Value, &msgValues)
 			if err != nil {
 				cfg.errChan <- err
 			}
-			for {
-				err = cfg.eventHandler(cfg.ctx, event)
-				if err != nil {
-					//TODO fine-grain error handling; determine sentinel errors?
-					cfg.errChan <- err
-				} else {
-					go func() {
-						_, err := cfg.consumer.Commit()
-						//TODO should errors committing be bubbled up or merely logged?
-						if err != nil {
-							log.Println("Error committing offset", err)
-						}
-					}()
-					break
-				}
+			err = cfg.eventHandler(cfg.ctx, event)
+			if err != nil {
+				//TODO fine-grain error handling; determine sentinel errors?
+				cfg.errChan <- err
+			} else {
+				go func() {
+					_, err := cfg.consumer.Commit()
+					//TODO should errors committing be bubbled up or merely logged?
+					if err != nil {
+						log.Println("Error committing offset", err)
+					}
+				}()
 			}
 		case kafka.PartitionEOF:
 			log.Println("Reached EOF:\t", ev)
 		case kafka.Error:
 			log.Println("ErrorL\t", ev)
 			cfg.errChan <- event
-		default:
 		}
 	}
 }

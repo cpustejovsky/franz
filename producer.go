@@ -23,7 +23,7 @@ func NewProducer(cfg *kafka.ConfigMap, deliverChan chan kafka.Event) *ConfluentP
 func (cp *ConfluentProducer) Produce(msg *kafka.Message) error {
 	producer, err := kafka.NewProducer(cp.cfg)
 	if err != nil {
-		return fmt.Errorf("error for config %+v:\t%w", cp.cfg, err)
+		return fmt.Errorf("incorrect config %+v:\t%w", cp.cfg, err)
 	}
 	err = producer.Produce(msg,
 		cp.deliverChan,
@@ -33,9 +33,12 @@ func (cp *ConfluentProducer) Produce(msg *kafka.Message) error {
 	}
 
 	e := <-cp.deliverChan
-	m := e.(*kafka.Message)
+	m, ok := e.(*kafka.Message)
+	if !ok {
+		return fmt.Errorf("type coercion failed for %T", e)
+	}
 	if m.TopicPartition.Error != nil {
-		return fmt.Errorf("Delivery failed: %v\n", m.TopicPartition.Error)
+		return fmt.Errorf("delivery failed: %w\n", m.TopicPartition.Error)
 	} else {
 		log.Printf("Delivered message to topic %s [%d] at offset %v\n",
 			*m.TopicPartition.Topic, m.TopicPartition.Partition, m.TopicPartition.Offset)

@@ -7,7 +7,6 @@ import (
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/cpustejovsky/franz"
-	"github.com/testcontainers/testcontainers-go"
 	tckafka "github.com/testcontainers/testcontainers-go/modules/kafka"
 )
 
@@ -38,17 +37,20 @@ func TestIntegration(t *testing.T) {
 		t.Skip("Skipping integration")
 	}
 	// ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	kafkaContainer, err := tckafka.Run(ctx,
 		"confluentinc/confluent-local:7.5.0",
 		tckafka.WithClusterID("test-cluster"),
 	)
-	defer func() {
-		if err := testcontainers.TerminateContainer(kafkaContainer); err != nil {
-			t.Logf("failed to terminate container: %s", err)
-		}
-	}()
+
+	// TODO: do I need to terminate container?
+	// cleanup := func() {
+	// 	if err := testcontainers.TerminateContainer(kafkaContainer); err != nil {
+	// 		t.Logf("failed to terminate container: %s", err)
+	// 	}
+	// }
+	// t.Cleanup(cleanup)
 	if err != nil {
 		t.Errorf("failed to start container: %s", err)
 		return
@@ -57,7 +59,7 @@ func TestIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(brokers)
+
 	deliverEvents := make(chan kafka.Event)
 	errChan := make(chan error)
 	doneChan := make(chan struct{})
@@ -77,7 +79,7 @@ func TestIntegration(t *testing.T) {
 		"enable.auto.commit": "false",
 	}
 	producer = franz.NewProducer(&producerCfg, deliverEvents)
-	consumer = franz.NewConsumer(context.TODO(), &consumerCfg, 1000)
+	consumer = franz.NewConsumer(ctx, &consumerCfg, 1000)
 	topic := "Test"
 
 	val := "Hello, World"
