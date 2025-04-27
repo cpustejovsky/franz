@@ -21,8 +21,8 @@ jobs:
         run: go build -v ./...
 
       - name: Test
-        env:
-          BOOSTRAP_SERVER: ${{ secrets.BOOSTRAP_SERVER }}
-          SASL_USERNAME: ${{ secrets.SASL_USERNAME }}
-          SASL_PASSWORD: ${{ secrets.SASL_PASSWORD }}
+        # env:
+        #   BOOSTRAP_SERVER: ${{ secrets.BOOSTRAP_SERVER }}
+        #   SASL_USERNAME: ${{ secrets.SASL_USERNAME }}
+        #   SASL_PASSWORD: ${{ secrets.SASL_PASSWORD }}
         run: go test -v ./...
