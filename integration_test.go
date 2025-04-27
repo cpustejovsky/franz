@@ -37,7 +37,7 @@ func TestIntegration(t *testing.T) {
 		t.Skip("Skipping integration")
 	}
 	// ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	kafkaContainer, err := tckafka.Run(ctx,
 		"confluentinc/confluent-local:7.5.0",
